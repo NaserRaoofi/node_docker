@@ -134,3 +134,21 @@ build/Release
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.cache/
+
+# Jest cache
+jest-cache/
+
+# Testing
+test-results/
+test-output/
