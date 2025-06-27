@@ -1,13 +1,26 @@
 services:
   app:
+    build:
+      target: production  # Use production stage
     ports:
-      - "3000:3000"
+      - "3000:3000"  # Fixed port for production (behind nginx)
     environment:
-      - NODE_ENV=production
-      - PORT=3000
-    command: ["npm", "start"]
-    # No volume mounting in production
+      - NODE_ENV=production  # Override for production
+      # DEBUG not set = disabled by default
+    # No volume mounting in production - use built image
     volumes: []
+    # Use built-in container user in production (no volume mounts = no permission issues)
+    # d_sirwan: 1001:1001, milad: 1002:1001
+    user: "${CONTAINER_USER_ID:-1001}:${CONTAINER_GROUP_ID:-1001}"
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
 
   # Production Redis with persistent storage
   redis:

@@ -1,5 +1,59 @@
+# Dependencies
 node_modules
-Dockerfile
+npm-debug.log*
+
+# Docker files (not needed inside container)
+Dockerfile*
 .dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+
+# Git files
 .git
 .gitignore
+.gitattributes
+
+# Development and CI files
+.vscode/
+.nyc_output
+coverage/
+.coverage
+*.log
+logs/
+
+# Environment files (use env_file in compose instead)
+.env.local
+.env.*.local
+
+# Development scripts (not needed inside container)
+scripts/
+manage.sh
+
+# Documentation (not needed inside container)
+README.md
+*.md
+docs/
+
+# Test files (not needed in production)
+test/
+tests/
+**/*.test.js
+**/*.spec.js
+jest.config.*
+.eslintrc.*
+.prettierrc*
+.editorconfig
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+*~
