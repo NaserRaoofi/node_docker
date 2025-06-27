@@ -1,13 +1,32 @@
 services:
   app:
+    build:
+      target: development  # Use dev stage for testing (has all deps)
     environment:
-      - NODE_ENV=test    # Override for test environment
-      - PORT=3001        # Different port for testing
+      - NODE_ENV=test
+      - PORT=3001
+      - MONGODB_URL=mongodb://mongo_test:27017/nodeapp_test
     ports:
-      - "3001:3001"      # Map test port
+      - "3001:3001"
     command: ["npm", "test"]
+    restart: "no"  # Don't restart test containers
+    depends_on:
+      - mongo_test
 
-  # Test database (isolated)
+  # Test MongoDB
+  mongo_test:
+    image: mongo:7.0-jammy
+    container_name: mongo_test
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test
+      MONGO_INITDB_ROOT_PASSWORD: testpass
+      MONGO_INITDB_DATABASE: nodeapp_test
+    ports:
+      - "27018:27017"  # Different port to avoid conflicts
+    networks:
+      - app-network
+
+  # Test database
   postgres_test:
     image: postgres:15-alpine
     container_name: postgres_test

@@ -1,18 +1,19 @@
 services:
   app:
     build:
-      target: production  # Use production stage
+      target: production
     ports:
-      - "3000:3000"  # Fixed port for production (behind nginx)
+      - "3000:3000"
     environment:
-      - NODE_ENV=production  # Override for production
-      # DEBUG not set = disabled by default
-    # No volume mounting in production - use built image
-    volumes: []
-    # Use built-in container user in production (no volume mounts = no permission issues)
-    # d_sirwan: 1001:1001, milad: 1002:1001
-    user: "${CONTAINER_USER_ID:-1001}:${CONTAINER_GROUP_ID:-1001}"
-    # Production resource limits
+      - NODE_ENV=production
+      - MONGODB_URL=mongodb://mongo_prod:27017/nodeapp_prod
+      - REDIS_URL=redis://redis_prod:6379
+    volumes: []  # No volume mounts in production
+    user: "1001:1001"  # Use appuser
+    restart: unless-stopped
+    depends_on:
+      - mongo_prod
+      - redis_prod
     deploy:
       resources:
         limits:
@@ -22,18 +23,33 @@ services:
           memory: 256M
           cpus: '0.25'
 
-  # Production Redis with persistent storage
-  redis:
+  # MongoDB for production
+  mongo_prod:
+    image: mongo:7.0-jammy
+    container_name: mongo_prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-your_secure_password}
+      MONGO_INITDB_DATABASE: nodeapp_prod
+    volumes:
+      - mongo_prod_data:/data/db
+      - mongo_prod_config:/data/configdb
+    networks:
+      - app-network
+    # No port exposure in production (internal only)
+
+  # Production Redis with persistence
+  redis_prod:
     image: redis:7-alpine
     container_name: redis_prod
-    restart: always
+    restart: unless-stopped
     volumes:
       - redis_prod_data:/data
-    # No port exposure in production (internal only)
     networks:
       - app-network
 
-  # Nginx reverse proxy for production
+  # Nginx reverse proxy
   nginx:
     image: nginx:alpine
     container_name: nginx_prod
@@ -45,9 +61,11 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
     depends_on:
       - app
-    restart: always
+    restart: unless-stopped
     networks:
       - app-network
 
 volumes:
+  mongo_prod_data:
+  mongo_prod_config:
   redis_prod_data:

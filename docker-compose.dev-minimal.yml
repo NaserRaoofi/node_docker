@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      target: development
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - DEBUG=app:*
+      # Comment out DB URLs for minimal testing
+      # - MONGODB_URL=mongodb://mongo_dev:27017/nodeapp_dev
+      # - REDIS_URL=redis://redis_dev:6379
+    volumes:
+      - .:/app
+      - /app/node_modules
+    user: "${UID:-1000}:${GID:-1000}"
+    restart: "no"  # Don't restart in development
+    # Remove dependencies for minimal testing
+    # depends_on:
+    #   - mongo_dev
+    #   - redis_dev

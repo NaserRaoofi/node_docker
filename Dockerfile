@@ -1,46 +1,35 @@
 # Use official Node.js Alpine image for smaller size
 FROM node:18-alpine AS base
 
-# Install security updates and bash first (as root)
+# Install security updates and create app user
 RUN apk update && apk upgrade && apk add --no-cache bash && \
-    addgroup -g 1001 -S developer && \
-    adduser -S d_sirwan -u 1001 -G developer && \
-    adduser -S milad -u 1002 -G developer
+    addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
 
-# Set working directory
+# Set working directory and ownership
 WORKDIR /app
-
-# Change ownership of the working directory
-RUN chown -R d_sirwan:developer /app
-USER d_sirwan
+RUN chown appuser:appgroup /app
+USER appuser
 
 # Expose port
 EXPOSE 3000
-# Development command - use exec form to handle signals properly
+
+# Development stage - includes all dependencies and source code
+FROM base AS development
+COPY --chown=appuser:appgroup package*.json ./
+RUN npm ci && npm cache clean --force
+COPY --chown=appuser:appgroup . ./
 CMD ["npm", "run", "dev"]
 
-# Production dependencies stage
-FROM base AS dependencies
-# Copy package files
-COPY --chown=d_sirwan:developer package*.json ./
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Production stage
+# Production stage - optimized for production
 FROM base AS production
-# Copy production dependencies from dependencies stage
-COPY --from=dependencies --chown=d_sirwan:developer /app/node_modules ./node_modules
-# Copy package files
-COPY --chown=d_sirwan:developer package*.json ./
-# Copy only necessary source files (exclude dev files via .dockerignore)
-COPY --chown=d_sirwan:developer . ./
-
-# Expose port
-EXPOSE 3000
-
-# Health check with shorter intervals for production
+# Copy package files and install only production dependencies
+COPY --chown=appuser:appgroup package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+# Copy source code
+COPY --chown=appuser:appgroup . ./
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
-
 # Production command
 CMD ["node", "index.js"]
