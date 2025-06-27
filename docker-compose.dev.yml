@@ -1,24 +1,41 @@
 services:
   app:
     build:
-      target: development  # Use development stage
+      target: development
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=development
-      - DEBUG=app:*  # Enable debug for development
-    # Run as current user to avoid permission issues in development
-    user: "${UID:-1000}:${GID:-1000}"
-    # Add init to handle signals properly
-    init: true
-    # Other environment variables come from .env via env_file in base.yml
-    # Development-specific volume mounts for hot reload
+      - DEBUG=app:*
+      - MONGODB_URL=mongodb://admin:devpass@mongo_dev:27017/nodeapp_dev?authSource=admin
+      - REDIS_URL=redis://redis_dev:6379
     volumes:
       - .:/app
       - /app/node_modules
+    user: "${UID:-1000}:${GID:-1000}"
+    restart: "no"  # Don't restart in development
+    depends_on:
+      - mongo_dev
+      - redis_dev
+
+  # MongoDB for development
+  mongo_dev:
+    image: mongo:7.0-jammy
+    container_name: mongo_dev
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: devpass
+      MONGO_INITDB_DATABASE: nodeapp_dev
+    volumes:
+      - mongo_dev_data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:Z
+    networks:
+      - app-network
 
   # Redis for development
-  redis:
+  redis_dev:
     image: redis:7-alpine
     container_name: redis_dev
     ports:
@@ -26,20 +43,5 @@ services:
     networks:
       - app-network
 
-  # Development database (optional)
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: postgres_dev
-  #   environment:
-  #     POSTGRES_DB: myapp_dev
-  #     POSTGRES_USER: dev
-  #     POSTGRES_PASSWORD: devpass
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_dev_data:/var/lib/postgresql/data
-  #   networks:
-  #     - app-network
-
 volumes:
-  postgres_dev_data:
+  mongo_dev_data:
