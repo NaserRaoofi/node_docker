@@ -1,13 +1,21 @@
 services:
   app:
+    build:
+      target: development  # Use development stage
     ports:
       - "${PORT:-3000}:${PORT:-3000}"
     environment:
       - NODE_ENV=development
-      - PORT=${PORT:-3000}
-      - HOST=${HOST:-0.0.0.0}
-      - DEBUG=app:*
-    command: ["npm", "run", "dev"]
+      - DEBUG=app:*  # Enable debug for development
+    # Run as current user to avoid permission issues in development
+    user: "${UID:-1000}:${GID:-1000}"
+    # Add init to handle signals properly
+    init: true
+    # Other environment variables come from .env via env_file in base.yml
+    # Development-specific volume mounts for hot reload
+    volumes:
+      - .:/app
+      - /app/node_modules
 
   # Redis for development
   redis:

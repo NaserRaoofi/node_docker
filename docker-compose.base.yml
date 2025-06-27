@@ -1,7 +1,10 @@
 services:
   # Main Application - Base Configuration
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${DOCKER_TARGET:-production}  # Default to production
     container_name: node_app
     volumes:
       - .:/app
@@ -11,6 +14,17 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+    # Use host user in development to avoid permission issues with volume mounts
+    # Will be overridden in production compose files that don't need volumes
+    user: "${UID:-1001}:${GID:-1001}"  # Default to d_sirwan user if not set
+    # Add init to handle signals properly
+    init: true
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 networks:
   app-network:

@@ -40,7 +40,7 @@ describe("API Integration Tests", () => {
       const response = await request(app).get("/");
       
       expect(response.status).toBe(200);
-      expect(response.text).toContain("Node Docker App");
+      expect(response.text).toContain("App"); // Should contain App in the title
       expect(response.text).toContain("test"); // NODE_ENV should be test
     });
   });

@@ -1,0 +1,43 @@
+# Security Best Practices Checklist
+
+## Docker Security
+- [x] Using non-root user (nodejs:nodejs)
+- [x] Minimal base image (Alpine Linux)
+- [x] Regular security updates (apk update && apk upgrade)
+- [x] No sensitive data in Dockerfile
+- [x] Proper .dockerignore to exclude sensitive files
+- [ ] Image vulnerability scanning (consider: docker scout, trivy)
+- [ ] Container runtime security (consider: read-only filesystem)
+
+## Application Security
+- [x] Environment variables for configuration
+- [x] Health checks implemented
+- [ ] Input validation middleware
+- [ ] Rate limiting middleware
+- [ ] Security headers middleware (helmet.js)
+- [ ] HTTPS enforcement in production
+
+## Production Security
+- [x] Resource limits defined
+- [x] Restart policies configured
+- [ ] Log aggregation setup
+- [ ] Monitoring and alerting
+- [ ] Backup strategies
+- [ ] Secret management (Docker Secrets, Kubernetes Secrets)
+
+## Network Security
+- [x] Internal networks defined
+- [x] Minimal port exposure
+- [ ] Firewall rules
+- [ ] VPN/Private network access
+- [ ] SSL/TLS certificates management
+
+## Recommendations
+1. Implement helmet.js for security headers
+2. Add rate limiting with express-rate-limit
+3. Set up log rotation and centralized logging
+4. Use Docker Secrets for sensitive data in production
+5. Implement container image scanning in CI/CD
+6. Consider read-only filesystem for containers
+7. Regular dependency updates and vulnerability scanning
+8. Implement proper monitoring and alerting
