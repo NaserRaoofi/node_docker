@@ -1,6 +1,25 @@
-# Dependencies
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dependency and config files
 node_modules
 npm-debug.log*
+# package-lock.json is needed for reproducible builds
+.npmrc
+.yarnrc*
 
 # Docker files (not needed inside container)
 Dockerfile*
@@ -14,7 +33,6 @@ docker-compose*.yaml
 .gitattributes
 
 # Development and CI files
-.vscode/
 .nyc_output
 coverage/
 .coverage
@@ -22,11 +40,11 @@ coverage/
 logs/
 
 # Environment files (use env_file in compose instead)
+.env
 .env.local
 .env.*.local
 
 # Development scripts (not needed inside container)
-scripts/
 manage.sh
 
 # Documentation (not needed inside container)
@@ -35,7 +53,6 @@ README.md
 docs/
 
 # Test files (not needed in production)
-test/
 tests/
 **/*.test.js
 **/*.spec.js
@@ -43,17 +60,3 @@ jest.config.*
 .eslintrc.*
 .prettierrc*
 .editorconfig
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
-*.swp
-*.swo
-*~

@@ -7,18 +7,33 @@ services:
     environment:
       - NODE_ENV=development
       - DEBUG=app:*
-      - MONGODB_URL=mongodb://admin:devpass@mongo_dev:27017/nodeapp_dev?authSource=admin
+      - MONGODB_URL=mongodb://appuser:apppass@mongo_dev:27017/nodeapp_dev
       - REDIS_URL=redis://redis_dev:6379
-    volumes:
-      - .:/app
-      - /app/node_modules
-    user: "${UID:-1000}:${GID:-1000}"
-    restart: "no"  # Don't restart in development
+    # Volumes commented out due to mounting issues
+    # volumes:
+    #   - .:/app:z
+    #   - /app/node_modules
+    user: "1001:1001"
+    restart: "unless-stopped"
+    command: ["node", "index.js"]
     depends_on:
-      - mongo_dev
-      - redis_dev
+      mongo_dev:
+        condition: service_healthy
+      redis_dev:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    extra_hosts:
+      - "mongo_dev:172.19.0.2"
+      - "redis_dev:172.19.0.3"
 
-  # MongoDB for development
+  # MongoDB service for development
   mongo_dev:
     image: mongo:7.0-jammy
     container_name: mongo_dev
@@ -30,11 +45,18 @@ services:
       MONGO_INITDB_DATABASE: nodeapp_dev
     volumes:
       - mongo_dev_data:/data/db
-      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:Z
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://admin:devpass@localhost:27017/admin --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
-  # Redis for development
+  # Redis service for development
   redis_dev:
     image: redis:7-alpine
     container_name: redis_dev
@@ -42,6 +64,17 @@ services:
       - "6379:6379"
     networks:
       - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   mongo_dev_data:
+
+networks:
+  app-network:
+    driver: bridge
