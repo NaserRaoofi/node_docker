@@ -4,17 +4,35 @@
 // Switch to the application database
 db = db.getSiblingDB('nodeapp_dev');
 
-// Create application user with read/write permissions
-db.createUser({
-  user: 'appuser',
-  pwd: 'apppass',
-  roles: [
-    {
-      role: 'readWrite',
-      db: 'nodeapp_dev'
-    }
-  ]
-});
+// Check if the user already exists
+let userExists = false;
+try {
+  const users = db.getUsers();
+  userExists = users.users.some(user => user.user === 'appuser');
+} catch (e) {
+  print('Error checking user existence:', e.message);
+}
+
+// Create application user with read/write permissions if not exists
+if (!userExists) {
+  try {
+    db.createUser({
+      user: 'appuser',
+      pwd: 'apppass',
+      roles: [
+        {
+          role: 'readWrite',
+          db: 'nodeapp_dev'
+        }
+      ]
+    });
+    print('User appuser created successfully!');
+  } catch (e) {
+    print('Error creating user:', e.message);
+  }
+} else {
+  print('User appuser already exists, skipping creation.');
+}
 
 // Create some initial collections with indexes
 db.createCollection('users');

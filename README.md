@@ -94,11 +94,14 @@ docker compose -f docker-compose.base.yml -f docker-compose.dev-minimal.yml up
 ```
 
 **Features:**
-- 🔄 Hot reload with nodemon
-- 🗄️ MongoDB with automated initialization
-- ⚡ Redis for session management
+- 🔄 Hot reload with nodemon (via `volumes: - .:/app`)
+- 🗄️ MongoDB with automated initialization (`mongo_dev` service)
+- ⚡ Redis for session management (`redis_dev` service)
 - 📁 Volume mounting for live code sync
-- 🐛 Debug mode enabled
+- 🐛 Debug mode enabled (`DEBUG=app:*`)
+- 👤 Runs as your user (`user: "${UID:-1000}:${GID:-1000}"`)
+- 🚫 No auto-restart in dev (`restart: "no"`)
+
 
 ### Production Environment
 ```bash
@@ -196,8 +199,8 @@ curl -X POST http://localhost:3000/api/users \
   "environment": "development",
   "version": "1.0.0",
   "services": {
-    "mongodb": "connected",
-    "redis": "configured"
+    "mongodb": "up",
+    "redis": "up"
   }
 }
 ```
@@ -245,7 +248,8 @@ HOST=0.0.0.0
 # MongoDB Configuration
 MONGO_ROOT_USER=admin
 MONGO_ROOT_PASSWORD=devpass
-MONGODB_URL=mongodb://admin:devpass@mongo_dev:27017/nodeapp_dev?authSource=admin
+# Application uses a dedicated user for better security
+MONGODB_URL=mongodb://appuser:apppass@mongo_dev:27017/nodeapp_dev
 
 # Redis Configuration
 REDIS_URL=redis://redis_dev:6379
@@ -299,8 +303,11 @@ npm run format
 
 ### `docker-compose.dev.yml`
 - Development-specific overrides
-- Hot reload with volume mounting
-- MongoDB and Redis services
+- MongoDB and Redis services with:
+  - Health checks
+  - Automatic initialization
+  - Persistent volumes
+  - Proper restart policies
 - Debug configuration and sample data
 
 ### `docker-compose.dev-minimal.yml`
@@ -327,21 +334,44 @@ The MongoDB container automatically initializes with:
 - **Collections**: `users`, `posts`, `sessions`
 - **Indexes**: Email and username uniqueness, performance indexes
 - **Sample data**: Development user accounts
-- **Authentication**: Admin user with proper permissions
+- **Authentication**: Two users are created:
+  - **Admin user**: For administrative access
+  - **Application user**: For application connections
+
+### MongoDB Initialization Process
+The initialization happens in two steps:
+1. `mongo-init.js` runs when the container first starts (for fresh volumes)
+2. `init-mongo.sh` runs after container startup (for both new and existing volumes)
 
 ### MongoDB Initialization Script (`scripts/mongo-init.js`)
 ```javascript
 // Creates database, users, collections, and indexes
 db = db.getSiblingDB('nodeapp_dev');
-db.createUser({...});
+// Check if user already exists before creating
+if (!userExists) {
+  db.createUser({
+    user: 'appuser',
+    pwd: 'apppass',
+    roles: [{ role: 'readWrite', db: 'nodeapp_dev' }]
+  });
+}
 db.users.createIndex({ "email": 1 }, { unique: true });
 // ... more setup
 ```
 
+### MongoDB Helper Script (`scripts/init-mongo.sh`)
+This script ensures the MongoDB user is properly initialized even when reusing volumes:
+```bash
+docker exec mongo_dev mongosh --username admin --password devpass --file /docker-entrypoint-initdb.d/mongo-init.js
+```
+
 ### Usage Examples
 ```bash
-# Connect to MongoDB
+# Connect to MongoDB as admin
 docker exec -it mongo_dev mongosh -u admin -p devpass
+
+# Connect as application user
+docker exec -it mongo_dev mongosh -u appuser -p apppass nodeapp_dev
 
 # Check database status
 curl http://localhost:3000/health
@@ -410,10 +440,15 @@ curl http://localhost:3000/health
 ## 📝 Development Workflow
 
 1. **Setup**: `./manage.sh init`
-2. **Develop**: `./manage.sh dev start`
-3. **Test**: `./manage.sh test run`
-4. **Lint**: `npm run lint`
-5. **Deploy**: `./manage.sh prod deploy`
+2. **Start Development Environment**: `./manage.sh dev start`
+   - This automatically starts MongoDB and Redis
+   - Runs the MongoDB initialization script
+   - Restarts the app container to ensure connections
+3. **Check Health**: `curl http://localhost:3000/health`
+   - Verify MongoDB and Redis are "up" in the health endpoint
+4. **Test**: `./manage.sh test run`
+5. **Lint**: `npm run lint`
+6. **Deploy**: `./manage.sh prod deploy`
 
 ## 🆘 Troubleshooting
 
@@ -429,8 +464,16 @@ curl http://localhost:3000/health
 
 ### MongoDB Connection Issues
 - Ensure MongoDB container is running: `./manage.sh dev logs mongo_dev`
-- Check connection string in `.env`
-- Verify authentication credentials
+- Check connection string in environment variables is using the correct credentials:
+  ```
+  MONGODB_URL=mongodb://appuser:apppass@mongo_dev:27017/nodeapp_dev
+  ```
+- If seeing authentication errors when reusing volumes, run: `./scripts/init-mongo.sh`
+- For persistent issues, try removing the MongoDB volume and restarting:
+  ```bash
+  docker compose -f docker-compose.base.yml -f docker-compose.dev.yml down -v
+  ./manage.sh dev start
+  ```
 - Wait for MongoDB to be ready (initialization takes time)
 
 ### Database Connection Issues
@@ -453,6 +496,7 @@ All scripts are located in the `scripts/` directory:
 - `scripts/test.sh` - Testing environment
 - `scripts/docker.sh` - Docker utilities
 - `scripts/mongo-init.js` - MongoDB initialization script
+- `scripts/init-mongo.sh` - MongoDB user setup helper script
 
 ## 🤝 Contributing
 

@@ -6,6 +6,9 @@ case "$1" in
   "start")
     echo "🚀 Starting development environment..."
     docker compose -f docker-compose.base.yml -f docker-compose.dev.yml up -d
+    
+    # Run MongoDB initialization
+    ./scripts/init-mongo.sh
     ;;
   "stop")
     echo "🛑 Stopping development environment..."
